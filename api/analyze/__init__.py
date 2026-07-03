@@ -11,7 +11,7 @@ import azure.functions as func
 ENDPOINT = os.environ.get("LANGUAGE_ENDPOINT", "").rstrip("/")
 KEY = os.environ.get("LANGUAGE_KEY", "")
 
-API_VERSION = "2023-07-01-preview"
+API_VERSION = "2025-11-01"
 TIMEOUT_SECONDS = 20
 MAX_CHARS = 5000
 
