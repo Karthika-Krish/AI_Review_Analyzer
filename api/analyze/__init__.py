@@ -3,7 +3,6 @@ import logging
 import os
 import urllib.error
 import urllib.request
-
 import azure.functions as func
 
 # Read these from Azure environment variables / application settings —
@@ -40,11 +39,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         sentiment_doc = _call_language("SentimentAnalysis", text)["results"]["documents"][0]
         keyphrase_doc = _call_language("KeyPhraseExtraction", text)["results"]["documents"][0]
         entity_doc = _call_language("EntityRecognition", text)["results"]["documents"][0]
-    except Exception:
+        language_doc = _detect_language(text)["results"]["documents"][0]
+        pii_doc = _call_language("PiiEntityRecognition", text)["results"]["documents"][0]
+        
+    except Exception as e:
         logging.exception("Azure AI Language call failed")
         return _json_response(
-            {"error": "Azure AI Language request failed. Check key/endpoint/quota."}, 502
-        )
+        {"error": str(e)}, 502
+    )
 
     result = {
         "sentiment": sentiment_doc["sentiment"],  # positive | negative | neutral | mixed
@@ -54,6 +56,15 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             {"text": e["text"], "category": e["category"]}
             for e in entity_doc.get("entities", [])
         ],
+        "language": language_doc["detectedLanguage"]["name"],
+        "pii": [
+         {
+        "text": e["text"],
+        "category": e["category"]
+        }
+        for e in pii_doc.get("entities", [])
+        ]
+        
     }
     return _json_response(result, 200)
 
@@ -82,7 +93,39 @@ def _call_language(kind: str, text: str) -> dict:
         detail = exc.read().decode("utf-8", "ignore")
         raise RuntimeError(f"{kind} failed: {exc.code} {detail}") from exc
 
+def _detect_language(text: str) -> dict:
 
+    url = f"{ENDPOINT}/language/:analyze-text?api-version={API_VERSION}"
+
+    payload = {
+        "kind": "LanguageDetection",
+        "analysisInput": {
+            "documents": [
+                {
+                    "id": "1",
+                    "text": text
+                }
+            ]
+        }
+    }
+
+    data = json.dumps(payload).encode("utf-8")
+
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "Ocp-Apim-Subscription-Key": KEY,
+        },
+        method="POST",
+    )
+
+    with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+    
+
+    
 def _json_response(payload: dict, status: int) -> func.HttpResponse:
     return func.HttpResponse(
         json.dumps(payload),

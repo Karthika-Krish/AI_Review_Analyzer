@@ -589,6 +589,21 @@ class="entity-list">
 
 </div>
 
+<div class="section">
+    <h3>🌍 Language Detected</h3>
+    <p id="languageResult">-</p>
+</div>
+<div class="section">
+
+<h3>🔒 PII Detected</h3>
+
+<div
+id="piiList"
+class="entity-list">
+</div>
+
+</div>
+
 </div>
 
 <p
@@ -619,6 +634,8 @@ const resultsSheet = document.getElementById("resultsSheet");
 const stampBadge = document.getElementById("stampBadge");
 const markedText = document.getElementById("markedText");
 const entityList = document.getElementById("entityList");
+const languageResult = document.getElementById("languageResult");
+const piiList = document.getElementById("piiList");
 
 const barPos = document.getElementById("barPos");
 const barNeu = document.getElementById("barNeu");
@@ -752,6 +769,24 @@ function renderResults(originalText, data){
         "<span class='entity-empty'>No named entities found.</span>";
     }
 
+    languageResult.textContent = data.language || "Unknown";
+
+    if (data.pii && data.pii.length > 0) {
+
+    piiList.innerHTML = data.pii.map(pii => `
+        <span class="entity-chip">
+            ${escapeHtml(pii.text)}
+            <span class="cat">${escapeHtml(pii.category)}</span>
+        </span>
+    `).join("");
+
+    } else {
+
+    piiList.innerHTML =
+        "<span class='entity-empty'>No PII detected.</span>";
+
+    }
+
     // ---------- SHOW RESULT ----------
     resultsSheet.hidden = false;
 
@@ -795,10 +830,6 @@ function escapeHtml(str){
         .replace(/>/g,"&gt;");
 
 }
-
-
 </script>
-
 </body>
-
 </html>
